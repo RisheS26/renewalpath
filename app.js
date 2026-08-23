@@ -10,6 +10,7 @@ let state = structuredClone(EMPTY);
 let storageAvailable = true;
 function esc(value) { const node=document.createElement("div"); node.textContent=String(value||""); return node.innerHTML; }
 function plain(value) { return value && typeof value==="object" && !Array.isArray(value); }
+function text(value,maxLength) { return typeof value==="string" ? value.slice(0,maxLength) : ""; }
 function load() {
   try {
     const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -17,6 +18,16 @@ function load() {
     state={...structuredClone(EMPTY),...saved,lookup:{...EMPTY.lookup,...(plain(saved.lookup)?saved.lookup:{})},form:{...EMPTY.form,...(plain(saved.form)?saved.form:{})}};
     if (!["lookup","renewal","otp","upload","confirmation","tracker"].includes(state.screen)) state.screen="lookup";
     state.renewalStep=state.renewalStep===1?1:0;
+    state.lookup.dl=text(state.lookup.dl,16);
+    state.lookup.dob=text(state.lookup.dob,10);
+    state.form.address=text(state.form.address,160);
+    state.form.city=text(state.form.city,80);
+    state.form.category=["private","two-wheeler"].includes(state.form.category)?state.form.category:"";
+    state.otp=text(state.otp,24).replace(/\D/g,"").slice(0,6);
+    state.uploaded=text(state.uploaded,160);
+    state.acknowledgement=text(state.acknowledgement,14);
+    state.expectedUpdate=text(state.expectedUpdate,60);
+    state.recordShown=state.recordShown===true;
   } catch (_) { storageAvailable=false; }
 }
 function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); storageAvailable=true; } catch (_) { storageAvailable=false; } }
@@ -37,7 +48,7 @@ function lookup() {
 }
 function renewal() {
   const first=state.renewalStep===0;
-  const fields=first ? '<div class="field"><label for="address">Current address</label><input id="address" name="address" autocomplete="street-address" value="'+esc(state.form.address)+'" aria-describedby="address-error"><span class="field-error" id="address-error"></span></div><div class="field"><label for="city">City or town</label><input id="city" name="city" autocomplete="address-level2" value="'+esc(state.form.city)+'" aria-describedby="city-error"><span class="field-error" id="city-error"></span></div>' : '<fieldset class="field"><legend class="field-label">Licence category to renew</legend><div class="radio-option"><input id="private" type="radio" name="category" value="private" '+(state.form.category==="private"?"checked":"")+"><label for=\"private\">Private vehicle (fictional demo category)</label></div><div class=\"radio-option\"><input id=\"two-wheeler\" type=\"radio\" name=\"category\" value=\"two-wheeler\" "+(state.form.category==="two-wheeler"?"checked":"")+"><label for=\"two-wheeler\">Two-wheeler (fictional demo category)</label></div><span class=\"field-error\" id=\"category-error\"></span></fieldset>";
+  const fields=first ? '<div class="field"><label for="address">Current address</label><input id="address" name="address" maxlength="160" autocomplete="street-address" value="'+esc(state.form.address)+'" aria-describedby="address-error"><span class="field-error" id="address-error"></span></div><div class="field"><label for="city">City or town</label><input id="city" name="city" maxlength="80" autocomplete="address-level2" value="'+esc(state.form.city)+'" aria-describedby="city-error"><span class="field-error" id="city-error"></span></div>' : '<fieldset class="field"><legend class="field-label">Licence category to renew</legend><div class="radio-option"><input id="private" type="radio" name="category" value="private" '+(state.form.category==="private"?"checked":"")+"><label for=\"private\">Private vehicle (fictional demo category)</label></div><div class=\"radio-option\"><input id=\"two-wheeler\" type=\"radio\" name=\"category\" value=\"two-wheeler\" "+(state.form.category==="two-wheeler"?"checked":"")+"><label for=\"two-wheeler\">Two-wheeler (fictional demo category)</label></div><span class=\"field-error\" id=\"category-error\"></span></fieldset>";
   return '<section class="card"><p class="eyebrow">Renewal form</p><div class="progress" aria-label="Renewal form progress"><span class="active"></span><span class="'+(!first?"active":"")+'"></span><span></span></div><h1>'+(first?"Confirm your address":"Confirm your category")+'</h1><p class="intro">One small decision at a time. Your completed fields save as you type.</p>'+saved()+'<form id="renewal-form" novalidate><div id="renewal-errors"></div>'+fields+'<div class="button-row '+(first?"":"split")+'">'+(first?"":'<button class="secondary" type="button" data-back>Back</button>')+'<button class="primary" type="submit">'+(first?"Continue":"Send verification code")+'</button></div></form></section>';
 }
 function otp() {
